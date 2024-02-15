@@ -20,6 +20,9 @@
             <option name="javaVersionString" value="11.0.13" />
           </config>
         </ContributedStateBase>
+        <ContributedStateBase type="MavenRuntime">
+          <config />
+        </ContributedStateBase>
       </target>
     </targets>
   </component>

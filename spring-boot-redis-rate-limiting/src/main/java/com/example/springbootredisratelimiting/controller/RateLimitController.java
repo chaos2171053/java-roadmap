@@ -1,5 +1,7 @@
 package com.example.springbootredisratelimiting.controller;
 
+import com.example.springbootredisratelimiting.anotation.RateLimiter;
+import com.example.springbootredisratelimiting.enums.LimitType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -36,5 +38,12 @@ public class RateLimitController {
         }
         return ResponseEntity.ok("Visit count: " + count);
     }
+
+    @GetMapping("/annotation/visit")
+    @RateLimiter(time = 60,count = 5,limitType = LimitType.IP,limitMsg = "一分钟内只能请求5次，请稍后重试")
+    public  ResponseEntity<String> annotationVisit(){
+        return ResponseEntity.ok("Hello ok~");
+    }
+
 
 }

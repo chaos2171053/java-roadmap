@@ -35,6 +35,20 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+<!--        Apache Commons Lang 是一个 Java 实用工具库，提供了许多用于增强 Java 核心类的工具方法。-->
+<!--        字符串操作：提供了更多强大的字符串处理方法，如字符串判空、截取、拼接、格式化等。-->
+<!--        对象操作：提供了对象的比较、克隆、哈希码计算等方法。-->
+<!--        数组操作：提供了对数组的操作，如转换、搜索、复制等。-->
+<!--        类型转换：提供了类型转换的方法，如将字符串转换为数值类型、日期类型等。-->
+<!--        异常处理：提供了更多异常处理的工具方法，如捕获异常并重新抛出、处理异常消息等。-->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
 
 
     </dependencies>

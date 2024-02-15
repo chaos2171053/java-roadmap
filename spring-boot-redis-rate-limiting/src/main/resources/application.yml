@@ -1,3 +1,5 @@
+server:
+  port: 9706
 spring:
   redis:
     host: spring-redis
