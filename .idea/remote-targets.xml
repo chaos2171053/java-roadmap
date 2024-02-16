@@ -24,6 +24,28 @@
           <config />
         </ContributedStateBase>
       </target>
+      <target name="order-service" type="docker-compose" uuid="994b33c0-b846-42c6-901c-2712b2e3ca6d">
+        <config>
+          <option name="targetPlatform">
+            <TargetPlatform />
+          </option>
+          <option name="configurationFiles">
+            <list>
+              <option value="$PROJECT_DIR$/excavator/docker-compose.yml" />
+            </list>
+          </option>
+          <option name="serviceName" value="order-service" />
+        </config>
+        <ContributedStateBase type="JavaLanguageRuntime">
+          <config>
+            <option name="homePath" value="/usr/local/openjdk-11" />
+            <option name="javaVersionString" value="11.0.13" />
+          </config>
+        </ContributedStateBase>
+        <ContributedStateBase type="MavenRuntime">
+          <config />
+        </ContributedStateBase>
+      </target>
     </targets>
   </component>
 </project>
