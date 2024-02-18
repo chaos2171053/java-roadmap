@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scripting.support.ResourceScriptSource;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -106,18 +107,19 @@ public class SecController {
     /**
      * 把商品库存预先放在 redis，在redis 中事先扣减库存
      * 这样会存在 redis 中库存为负数的情况
+     *
      * @param username
      * @param stockName
      * @return
      */
     @GetMapping("/secRedis")
     public String secRedis(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
-        synchronized(this){
+        synchronized (this) {
             String message = "";
             // 调用redis给相应商品库存量减一
             Long decrByResult = redisService.decrBy(stockName);
             if (decrByResult >= 0) {
-                log.info("用户：{}秒杀该商品：{}库存有余 {} 件，可以进行下订单操作", Thread.currentThread().getId(), stockName, decrByResult+1);
+                log.info("用户：{}秒杀该商品：{}库存有余 {} 件，可以进行下订单操作", Thread.currentThread().getId(), stockName, decrByResult + 1);
                 // 1. 库存减一
                 stockService.decrByStock(stockName);
                 // 2. 生成订单
@@ -129,7 +131,7 @@ public class SecController {
                 message = username + "参加秒杀结果是：成功";
                 // 无支付，订单生成成功，直接更新数据库中的库存到 redis
                 Integer currentStock = stockService.selectByName(stockName);
-                log.info("用户：{} 秒杀后同步数据库库存到 redis {}",Thread.currentThread().getId(),currentStock);
+                log.info("用户：{} 秒杀后同步数据库库存到 redis {}", Thread.currentThread().getId(), currentStock);
                 redisService.put(stockName, currentStock, 20);
             } else {
                 log.info("用户：{}.参加秒杀结果是：秒杀已经结束", username);
@@ -143,13 +145,14 @@ public class SecController {
 
     /**
      * 使用 lua 脚本扣减 redis 中的库存
+     *
      * @param username
      * @param stockName
      * @return
      */
     @GetMapping("/secRedisLua")
     public String secRedisLua(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
-        synchronized(this){
+        synchronized (this) {
             String message = "";
 
             DefaultRedisScript<String> redisScript = new DefaultRedisScript<>();
@@ -177,6 +180,7 @@ public class SecController {
 
     /**
      * 使用 redis watch 秒杀，会造成一个单也没有，秒杀却全部完成，库存还在。
+     *
      * @param username
      * @param stockName
      * @return
@@ -249,10 +253,10 @@ public class SecController {
         // 查询当前库存信息，包括版本号
         Stock stock = stockService.queryStockByName(stockName);
 
-        if (stock!=null && stock.getStock() > 0) {
+        if (stock != null && stock.getStock() > 0) {
             // 还有库存，准备更新库存
             int affectedRows = stockService.decrByStockWithVersion(stock);
-            if(affectedRows>0){
+            if (affectedRows > 0) {
                 // 还有库存
                 // 2. 生成订单
                 Order order = new Order();
@@ -261,7 +265,7 @@ public class SecController {
                 orderService.createOrder(order);
                 log.info("用户：{}.参加秒杀结果是：成功", username);
                 message = username + "参加秒杀结果是：成功";
-            }else {
+            } else {
                 // 更新失败，可能是版本号不匹配，或库存已经为零
                 message = username + "参加秒杀活动结果是：更新失败，可能是版本号不匹配，或库存已经为零";
             }
@@ -269,6 +273,52 @@ public class SecController {
         } else {
             log.info("用户：{}.参加秒杀结果是：秒杀已经结束", username);
             message = username + "参加秒杀活动结果是：秒杀已经结束";
+        }
+        return message;
+    }
+
+    /**
+     * 使用数据库进行秒杀，使用悲观锁
+     *
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secDataBaseWithPessimisticLock")
+    @Transactional
+    public String secDataBaseWithPessimisticLock(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
+        String message = "";
+        // 查询当前库存信息，包括版本号
+        // MySQL 不支持在 UPDATE 语句中使用 FOR UPDATE 关键字。FOR UPDATE 通常用于 SELECT 查询，用于获取被选中的行的锁。
+//        下面是一个示例：
+//
+//        sql
+//        Copy code
+//        BEGIN;
+//        SELECT * FROM seckill.stock WHERE id = #{id} AND stock > 0 FOR UPDATE;
+//        UPDATE seckill.stock SET stock = stock - 1 WHERE id = #{id} AND stock > 0;
+//        COMMIT;
+        // 在事务中使用 SELECT ... FOR UPDATE 来锁定要更新的行，然后再执行 UPDATE 操作，确保了更新的原子性和一致性。
+        Stock stock = stockService.selectByNameWithPessimisticLock(stockName);
+        if (stock != null) {
+            // 直接扣减库存
+            int affectedRows = stockService.decrByStockWithPessimisticLock(stock);
+            if (affectedRows > 0) {
+                // 还有库存
+                // 2. 生成订单
+                Order order = new Order();
+                order.setOrderName(stockName);
+                order.setOrderUser(username);
+                orderService.createOrder(order);
+                log.info("用户：{}.参加秒杀结果是：成功", username);
+                message = username + "参加秒杀结果是：成功";
+            } else {
+                // 更新失败，可能是版本号不匹配，或库存已经为零
+                message = username + "参加秒杀活动结果是：库存已经为零";
+            }
+        } else {
+            message = username + "参加秒杀活动结果是：stock不存在";
         }
         return message;
     }

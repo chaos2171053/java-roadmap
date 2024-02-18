@@ -84,4 +84,39 @@ public class StockServiceImpl implements StockService {
     public int decrByStockWithVersion(Stock stock) {
         return stockMapper.decrByStockWithVersion(stock);
     }
+
+    /**
+     * 悲观锁 将库存数量减一并更新版本号
+     *
+     * @param stock
+     * @return
+     */
+    @Override
+    public int decrByStockWithPessimisticLock(Stock stock) {
+        return stockMapper.decrByStockWithPessimisticLock(stock);
+    }
+
+    /**
+     * 悲观锁 查询库存
+     *
+     * @param stockName
+     * @return
+     */
+    @Override
+    public Stock selectByNameWithPessimisticLock(String stockName) {
+        List<Stock> stocks = stockMapper.selectByNameWithPessimisticLock(stockName);
+        if (!CollectionUtils.isEmpty(stocks)) {
+            return stocks.get(0);
+        }
+        return null;
+    }
+
+    @Override
+    public Stock queryStock(String stockName) {
+        List<Stock> stocks = stockMapper.queryStock(stockName);
+        if (!CollectionUtils.isEmpty(stocks)) {
+            return stocks.get(0);
+        }
+        return null;
+    }
 }

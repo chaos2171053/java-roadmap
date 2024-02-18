@@ -15,4 +15,10 @@ public interface StockMapper {
     Integer insert(Stock stock);
 
     int decrByStockWithVersion(Stock stock);
+
+    int decrByStockWithPessimisticLock(Stock stock);
+
+    List<Stock> selectByNameWithPessimisticLock(String stockName);
+
+    List<Stock> queryStock(String stockName);
 }

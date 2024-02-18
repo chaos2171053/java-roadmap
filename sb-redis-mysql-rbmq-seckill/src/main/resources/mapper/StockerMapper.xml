@@ -13,6 +13,17 @@
         from seckill.stock
         where name = #{name}
     </select>
+    <select id="selectByNameWithPessimisticLock" resultType="com.example.sbredismysqlrbmqseckill.bean.Stock">
+        select *
+        from seckill.stock
+        where name = #{name} FOR
+        UPDATE
+    </select>
+    <select id="queryStock" resultType="com.example.sbredismysqlrbmqseckill.bean.Stock">
+        select *
+        from seckill.stock
+        where name = #{name}
+    </select>
     <!--    parameterType 用于指定 SQL 语句的参数类型-->
     <!--    当 SQL 语句需要参数时，我们会使用 parameterType 来指定参数类型，并在 SQL 语句中使用 #{} 占位符来引用参数-->
     <update id="updateByPrimaryKey" parameterType="com.example.sbredismysqlrbmqseckill.bean.Stock">
@@ -22,6 +33,11 @@
     </update>
     <update id="decrByStockWithVersion" parameterType="com.example.sbredismysqlrbmqseckill.bean.Stock">
         update seckill.stock set stock = stock - 1,version = version +1  where id = #{id} and version = #{version} and stock > 0
+    </update>
+    <update id="decrByStockWithPessimisticLock" parameterType="com.example.sbredismysqlrbmqseckill.bean.Stock">
+        UPDATE seckill.stock
+        SET stock = stock - 1
+        WHERE id = #{id} AND stock > 0
     </update>
 
 </mapper>
