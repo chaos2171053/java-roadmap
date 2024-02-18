@@ -20,5 +20,8 @@
         set stock = #{stock}
         where id = #{id}
     </update>
+    <update id="decrByStockWithVersion" parameterType="com.example.sbredismysqlrbmqseckill.bean.Stock">
+        update seckill.stock set stock = stock - 1,version = version +1  where id = #{id} and version = #{version} and stock > 0
+    </update>
 
 </mapper>

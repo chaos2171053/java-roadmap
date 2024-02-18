@@ -6,8 +6,9 @@ import java.io.Serializable;
 
 @Data
 public class Stock implements Serializable {
-    private static final long serialVersionUID = 8278833061297572121L;
+    private static final long serialVersionUID = 7667526025487637L;
     private Integer id;
     private String name;
     private Integer stock;
+    private Integer version; // 添加版本号字段
 }

@@ -1,6 +1,7 @@
 package com.example.sbredismysqlrbmqseckill.controller;
 
 import com.example.sbredismysqlrbmqseckill.bean.Order;
+import com.example.sbredismysqlrbmqseckill.bean.Stock;
 import com.example.sbredismysqlrbmqseckill.service.OrderService;
 import com.example.sbredismysqlrbmqseckill.service.RedisService;
 import com.example.sbredismysqlrbmqseckill.service.StockService;
@@ -230,6 +231,44 @@ public class SecController {
             message = "发生异常：" + e.getMessage();
         } finally {
             redisTemplate.unwatch();
+        }
+        return message;
+    }
+
+    /**
+     * 使用数据库进行秒杀，使用乐观锁，添加version 字段
+     *
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secDataBaseVersionLock")
+    public String secDataBaseVersionLock(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
+        String message = "";
+        // 查询当前库存信息，包括版本号
+        Stock stock = stockService.queryStockByName(stockName);
+
+        if (stock!=null && stock.getStock() > 0) {
+            // 还有库存，准备更新库存
+            int affectedRows = stockService.decrByStockWithVersion(stock);
+            if(affectedRows>0){
+                // 还有库存
+                // 2. 生成订单
+                Order order = new Order();
+                order.setOrderName(stockName);
+                order.setOrderUser(username);
+                orderService.createOrder(order);
+                log.info("用户：{}.参加秒杀结果是：成功", username);
+                message = username + "参加秒杀结果是：成功";
+            }else {
+                // 更新失败，可能是版本号不匹配，或库存已经为零
+                message = username + "参加秒杀活动结果是：更新失败，可能是版本号不匹配，或库存已经为零";
+            }
+
+        } else {
+            log.info("用户：{}.参加秒杀结果是：秒杀已经结束", username);
+            message = username + "参加秒杀活动结果是：秒杀已经结束";
         }
         return message;
     }

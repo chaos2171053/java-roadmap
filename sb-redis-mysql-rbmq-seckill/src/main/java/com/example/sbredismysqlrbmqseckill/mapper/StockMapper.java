@@ -14,4 +14,5 @@ public interface StockMapper {
 
     Integer insert(Stock stock);
 
+    int decrByStockWithVersion(Stock stock);
 }
