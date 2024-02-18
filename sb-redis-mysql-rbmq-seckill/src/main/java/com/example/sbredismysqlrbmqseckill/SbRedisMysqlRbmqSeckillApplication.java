@@ -23,6 +23,7 @@ public class SbRedisMysqlRbmqSeckillApplication implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments applicationArguments) {
-        redisService.put("watch", 10000, 20);
+        // 在 redis 中给 Q弹豆干 添加10个库存
+        redisService.put("Q弹豆干", 10, 20);
     }
 }
