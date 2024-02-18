@@ -7,6 +7,7 @@ import com.example.sbredismysqlrbmqseckill.service.StockService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scripting.support.ResourceScriptSource;
@@ -27,7 +28,8 @@ public class SecController {
     private StockService stockService;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
-
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     private final String SEC_REDIS_LUA_SCRIPT_PATH = "scripts/sec_redis.lua";
 
@@ -170,7 +172,65 @@ public class SecController {
             }
             return message;
         }
-
     }
 
+    /**
+     * 使用 redis watch 秒杀，会造成一个单也没有，秒杀却全部完成，库存还在。
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secRedisWatch")
+    public String secRedisWatch(Integer username, String stockName) {
+        String message = "";
+        String stockKey = stockName; // 这里假设 Redis 中的键就是库存名称
+
+        try {
+            redisTemplate.watch(stockKey);
+
+            String currentStockStr = (String) redisTemplate.opsForValue().get(stockKey);
+
+            if (currentStockStr != null) {
+                Integer currentStock = Integer.valueOf(currentStockStr);
+                if (currentStock > 0) {
+                    log.info("用户：{} 秒杀该商品：可以进行下订单操作", Thread.currentThread().getId());
+                    redisTemplate.multi();
+                    redisTemplate.opsForValue().decrement(stockKey);
+
+                    try {
+                        redisTemplate.exec();
+                        // 1. 库存减一
+                        stockService.decrByStock(stockName);
+                        // 2. 生成订单
+                        Order order = new Order();
+                        order.setOrderName(stockName);
+                        order.setOrderUser(username);
+                        orderService.createOrder(order);
+                        message = username + "参加秒杀结果是：成功";
+                        log.info(message);
+                    } catch (Exception e) {
+                        log.info("========回滚事务====");
+                        // 回滚事务
+                        redisTemplate.discard();
+                        message = username + "参加秒杀活动结果是：回滚事务";
+                        log.info(message);
+                    }
+
+                } else {
+                    message = username + "参加秒杀活动结果是：秒杀已经结束";
+                    log.info(message);
+                }
+
+            } else {
+                message = username + "参加秒杀活动结果是：库存不足";
+                log.info(message);
+            }
+        } catch (Exception e) {
+            // 处理异常
+            message = "发生异常：" + e.getMessage();
+        } finally {
+            redisTemplate.unwatch();
+        }
+        return message;
+    }
 }
