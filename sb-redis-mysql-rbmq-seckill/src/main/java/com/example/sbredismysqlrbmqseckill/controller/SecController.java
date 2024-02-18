@@ -6,7 +6,15 @@ import com.example.sbredismysqlrbmqseckill.service.RedisService;
 import com.example.sbredismysqlrbmqseckill.service.StockService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scripting.support.ResourceScriptSource;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Collections;
 
 @RestController
 @Slf4j
@@ -17,6 +25,11 @@ public class SecController {
     private OrderService orderService;
     @Autowired
     private StockService stockService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+
+    private final String SEC_REDIS_LUA_SCRIPT_PATH = "scripts/sec_redis.lua";
 
 
     /**
@@ -87,6 +100,13 @@ public class SecController {
         return "hello";
     }
 
+    /**
+     * 把商品库存预先放在 redis，在redis 中事先扣减库存
+     * 这样会存在 redis 中库存为负数的情况
+     * @param username
+     * @param stockName
+     * @return
+     */
     @GetMapping("/secRedis")
     public String secRedis(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
         synchronized(this){
@@ -113,6 +133,41 @@ public class SecController {
                 message = username + "参加秒杀活动结果是：秒杀已经结束";
             }
 
+            return message;
+        }
+
+    }
+
+    /**
+     * 使用 lua 脚本扣减 redis 中的库存
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secRedisLua")
+    public String secRedisLua(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        synchronized(this){
+            String message = "";
+
+            DefaultRedisScript<String> redisScript = new DefaultRedisScript<>();
+            redisScript.setScriptSource(new ResourceScriptSource(new ClassPathResource(SEC_REDIS_LUA_SCRIPT_PATH)));
+            redisScript.setResultType(String.class);
+            String luaScriptResult = stringRedisTemplate.execute(redisScript, Collections.singletonList(stockName), username.toString(), stockName);
+            if ("success".equals(luaScriptResult)) {
+                log.info("用户：{} 秒杀该商品：可以进行下订单操作", Thread.currentThread().getId());
+                // 1. 库存减一
+                stockService.decrByStock(stockName);
+                // 2. 生成订单
+                Order order = new Order();
+                order.setOrderName(stockName);
+                order.setOrderUser(username);
+                orderService.createOrder(order);
+                log.info("用户：{}.参加秒杀结果是：成功", Thread.currentThread().getId());
+                message = username + "参加秒杀结果是：成功";
+            } else {
+                log.info("用户：{}.参加秒杀结果是：秒杀已经结束", username);
+                message = username + "参加秒杀活动结果是：秒杀已经结束";
+            }
             return message;
         }
 
