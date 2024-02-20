@@ -3,9 +3,12 @@ package com.example.sbredismysqlrbmqseckill.controller;
 import com.example.sbredismysqlrbmqseckill.bean.Order;
 import com.example.sbredismysqlrbmqseckill.bean.Stock;
 import com.example.sbredismysqlrbmqseckill.service.OrderService;
+import com.example.sbredismysqlrbmqseckill.service.RedisDistributedLock;
 import com.example.sbredismysqlrbmqseckill.service.RedisService;
 import com.example.sbredismysqlrbmqseckill.service.StockService;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @Slf4j
@@ -32,6 +36,10 @@ public class SecController {
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private RedisDistributedLock redisDistributedLock;
+    @Autowired
+    private RedissonClient redissonClient;
 
     private final String SEC_REDIS_LUA_SCRIPT_PATH = "scripts/sec_redis.lua";
 
@@ -48,6 +56,8 @@ public class SecController {
         log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
         String message = "";
         Integer stockCount = stockService.selectByName(stockName);
+        // get lock
+
         if (stockCount > 0) {
             // 还有库存
             // 1. 库存减一
@@ -319,6 +329,128 @@ public class SecController {
             }
         } else {
             message = username + "参加秒杀活动结果是：stock不存在";
+        }
+        return message;
+    }
+
+    /**
+     * 使用redis 分布式锁进行秒杀
+     *
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secRedisDistributedLock")
+    public String secRedisDistributedLock(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
+        String message = "";
+        boolean lockAcquired = redisDistributedLock.acquireLock(stockName, String.valueOf(Thread.currentThread().getId()), 15);
+        try {
+            if (lockAcquired) {
+                Integer stockCount = stockService.selectByName(stockName);
+                if (stockCount > 0) {
+                    // 还有库存
+                    // 1. 库存减一
+                    stockService.decrByStock(stockName);
+                    // 2. 生成订单
+                    Order order = new Order();
+                    order.setOrderName(stockName);
+                    order.setOrderUser(username);
+                    orderService.createOrder(order);
+                    log.info("用户：{}.参加秒杀结果是：成功", username);
+                    message = username + "参加秒杀结果是：成功";
+                } else {
+                    log.info("用户：{}.参加秒杀结果是：秒杀已经结束", username);
+                    message = username + "参加秒杀活动结果是：秒杀已经结束";
+                }
+
+            } else {
+                // 获取锁失败，说明其他线程正在进行秒杀操作，返回秒杀失败信息
+                log.info("获取锁失败，说明其他线程正在进行秒杀操作，返回秒杀失败信息");
+                message = "秒杀失败，请稍后重试";
+            }
+        } finally {
+            redisDistributedLock.releaseLock(stockName, String.valueOf(Thread.currentThread().getId()));
+        }
+        return message;
+    }
+
+    /**
+     * 使用redis 分布式锁+lua进行秒杀
+     *
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secRedisDistributedLuaLock")
+    public String secRedisDistributedLuaLock(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
+        String message = "";
+        boolean lockAcquired = redisDistributedLock.acquireLock(stockName, String.valueOf(Thread.currentThread().getId()), 15);
+        try {
+            if (lockAcquired) {
+                Integer stockCount = stockService.selectByName(stockName);
+                if (stockCount > 0) {
+                    // 还有库存
+                    // 1. 库存减一
+                    stockService.decrByStock(stockName);
+                    // 2. 生成订单
+                    Order order = new Order();
+                    order.setOrderName(stockName);
+                    order.setOrderUser(username);
+                    orderService.createOrder(order);
+                    log.info("用户：{}.参加秒杀结果是：成功", username);
+                    message = username + "参加秒杀结果是：成功";
+                } else {
+                    log.info("用户：{}.参加秒杀结果是：秒杀已经结束", username);
+                    message = username + "参加秒杀活动结果是：秒杀已经结束";
+                }
+
+            } else {
+                // 获取锁失败，说明其他线程正在进行秒杀操作，返回秒杀失败信息
+                log.info("获取锁失败，说明其他线程正在进行秒杀操作，返回秒杀失败信息");
+                message = "秒杀失败，请稍后重试";
+            }
+        } finally {
+            redisDistributedLock.releaseLockByLua(stockName, String.valueOf(Thread.currentThread().getId()));
+        }
+        return message;
+    }
+
+    /**
+     * 使用 redission 秒杀
+     *
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secRedisson")
+    public String secRedisson(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
+        String message = "";
+        RLock lock = redissonClient.getLock("stock_" + stockName);
+        try {
+            // 尝试加锁，等待时间为100秒，锁的过期时间为10秒
+            if (lock.tryLock(100, 10, TimeUnit.SECONDS)) {
+                Integer stockCount = stockService.selectByName(stockName);
+                if (stockCount > 0) {
+                    stockService.decrByStock(stockName);
+                    Order order = new Order();
+                    order.setOrderName(stockName);
+                    order.setOrderUser(username);
+                    orderService.createOrder(order);
+                    message = username + "参加秒杀结果是：成功";
+                } else {
+                    message = username + "参加秒杀活动结果是：秒杀已经结束";
+                }
+            } else {
+                message = "获取锁超时";
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            message = "秒杀过程中发生异常";
+        } finally {
+            lock.unlock();
         }
         return message;
     }
