@@ -6,6 +6,9 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/***
+ * 使用 RabbitMQ 创建订单、扣减库存
+ */
 @Configuration
 public class MyRabbitMQConfig {
 

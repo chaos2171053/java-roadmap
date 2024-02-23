@@ -22,3 +22,8 @@ services:
     ports:
       - "5672:5672"  # AMQP
       - "15672:15672"  # RabbitMQ Management UI
+    volumes:
+      - ./libs:/opt/rabbitmq/plugins/
+    environment:
+      RABBITMQ_PLUGINS: rabbitmq_delayed_message_exchange
+    command: rabbitmq-plugins enable rabbitmq_delayed_message_exchange
