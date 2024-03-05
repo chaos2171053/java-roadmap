@@ -37,5 +37,24 @@ public class ListNode {
         }
         return l1 == null && l2 == null;
     }
+    public static ListNode buildWithCycle(int[] values, int pos) {
+        if (values == null || values.length == 0) return null;
+
+        ListNode head = new ListNode(values[0]);
+        ListNode cycleStart = null;
+        ListNode tail = head;
+
+        // 构建链表
+        for (int i = 1; i < values.length; i++) {
+            tail.next = new ListNode(values[i]);
+            tail = tail.next;
+            if (i == pos) cycleStart = tail; // 设置环的起始节点
+        }
+
+        // 如果设置了环的起始节点，则将链表尾部连接到起始节点
+        if (cycleStart != null) tail.next = cycleStart;
+
+        return head;
+    }
 }
 
