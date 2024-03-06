@@ -1,5 +1,8 @@
 package org.example.LinkedList;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ListNode {
     int val;
     ListNode next;
@@ -55,6 +58,15 @@ public class ListNode {
         if (cycleStart != null) tail.next = cycleStart;
 
         return head;
+    }
+    // 将链表转换为 List
+    public static List<Integer> toList(ListNode head) {
+        List<Integer> list = new ArrayList<>();
+        while (head != null) {
+            list.add(head.val);
+            head = head.next;
+        }
+        return list;
     }
 }
 
