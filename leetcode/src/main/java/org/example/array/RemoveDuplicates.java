@@ -24,19 +24,35 @@ package org.example.array;
 //}
 //如果所有断言都通过，那么您的题解将被 通过。
 public class RemoveDuplicates {
-    public int removeDuplicates(int[] nums) {
-        if (nums.length == 0) return 0; // 处理空数组的情况
-        int slow = 0; // 慢指针，指向当前处理的位置
-        for (int fast = 1; fast < nums.length; fast++) {
-            if (nums[fast] != nums[slow]) {
-                // 如果当前元素与慢指针指向的元素不相同，则将当前元素复制到慢指针的下一个位置
-                // 并且将慢指针向后移动一位
-                slow++;
-                nums[slow] = nums[fast];
+//    public int removeDuplicates(int[] nums) {
+//        if (nums.length == 0) return 0; // 处理空数组的情况
+//        int slow = 0; // 慢指针，指向当前处理的位置
+//        for (int fast = 1; fast < nums.length; fast++) {
+//            if (nums[fast] != nums[slow]) {
+//                // 如果当前元素与慢指针指向的元素不相同，则将当前元素复制到慢指针的下一个位置
+//                // 并且将慢指针向后移动一位
+//                slow++;
+//                nums[slow] = nums[fast];
+//            }
+//            // 如果当前元素与慢指针指向的元素相同，则继续向后移动快指针，直到找到不同的元素
+//        }
+//        // 返回慢指针位置作为新数组的长度
+//        return slow + 1;
+//    }
+        public int removeDuplicates(int[] nums) {
+            if (nums.length == 0) {
+                return 0;
             }
-            // 如果当前元素与慢指针指向的元素相同，则继续向后移动快指针，直到找到不同的元素
+            int slow = 0, fast = 0;
+            while (fast < nums.length) {
+                if (nums[fast] != nums[slow]) {
+                    slow++;
+                    // 维护 nums[0..slow] 无重复
+                    nums[slow] = nums[fast];
+                }
+                fast++;
+            }
+            // 数组长度为索引 + 1
+            return slow + 1;
         }
-        // 返回慢指针位置作为新数组的长度
-        return slow + 1;
-    }
 }
