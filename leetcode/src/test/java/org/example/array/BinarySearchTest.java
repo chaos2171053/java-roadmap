@@ -55,5 +55,14 @@ public class BinarySearchTest {
         int result = binarySearch.search(nums, target);
         assertEquals(expected, result);
     }
+    @Test
+    public void testSearch_GetLeftIndex() {
+        BinarySearch binarySearch = new BinarySearch();
+        int[] nums = {1,2,2,2,3};
+        int target = 2;
+        int expected = 2; // 目标值5不存在于数组中
+        int result = binarySearch.search(nums, target);
+        assertEquals(expected, result);
+    }
 }
 
