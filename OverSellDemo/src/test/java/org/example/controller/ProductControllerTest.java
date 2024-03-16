@@ -1,5 +1,6 @@
 package org.example.controller;
 
+import org.example.model.Product;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -50,4 +51,19 @@ public class ProductControllerTest {
 
         // 检查库存是否为负数等其他逻辑
     }
+    @Test
+    public void testGetProductById() {
+        // 定义要获取信息的商品ID
+        Long productId = 1L;
+
+        // 发送 GET 请求获取商品信息
+        ResponseEntity<Product> responseEntity = restTemplate.getForEntity("http://localhost:" + port + "/products/" + productId, Product.class);
+
+        // 验证响应
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(responseEntity.getBody()).isNotNull();
+        assertThat(responseEntity.getBody().getId()).isEqualTo(productId);
+    }
+
+
 }

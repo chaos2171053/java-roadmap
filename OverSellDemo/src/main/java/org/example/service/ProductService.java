@@ -37,4 +37,8 @@ public class ProductService {
         productMapper.updateProductStock(product);
 
     }
+
+    public Product getProductById(Long productId) {
+        return productMapper.getProductById(productId);
+    }
 }

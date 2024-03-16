@@ -20,6 +20,10 @@ public class ProductController {
     public List<Product> getAllProducts() {
         return productService.getAllProducts();
     }
+    @GetMapping("/{productId}")
+    public Product getProductById(@PathVariable Long productId) {
+        return productService.getProductById(productId);
+    }
 
     @PostMapping
     public ResponseEntity<String> purchaseProduct(@RequestParam Long productId, @RequestParam int quantity) {
