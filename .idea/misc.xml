@@ -18,10 +18,12 @@
         <option value="$PROJECT_DIR$/../leetcode/pom.xml" />
         <option value="$PROJECT_DIR$/leetcode/pom.xml" />
         <option value="$PROJECT_DIR$/OverSellDemo/pom.xml" />
+        <option value="$PROJECT_DIR$/SeckillDemo/pom.xml" />
       </list>
     </option>
     <option name="ignoredFiles">
       <set>
+        <option value="$PROJECT_DIR$/OverSellDemo/pom.xml" />
         <option value="$PROJECT_DIR$/springboot-redis-rabbitmq/pom.xml" />
       </set>
     </option>
