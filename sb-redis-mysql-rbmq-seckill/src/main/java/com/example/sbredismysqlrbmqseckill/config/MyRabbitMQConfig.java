@@ -13,19 +13,19 @@ import org.springframework.context.annotation.Configuration;
 public class MyRabbitMQConfig {
 
     //库存交换机
-    public static final String STORY_EXCHANGE = "STORY_EXCHANGE";
+    public static final String STOCK_EXCHANGE = "STOCK_EXCHANGE";
 
     //订单交换机
     public static final String ORDER_EXCHANGE = "ORDER_EXCHANGE";
 
     //库存队列
-    public static final String STORY_QUEUE = "STORY_QUEUE";
+    public static final String STOCK_QUEUE = "STOCK_QUEUE";
 
     //订单队列
     public static final String ORDER_QUEUE = "ORDER_QUEUE";
 
     //库存路由键
-    public static final String STORY_ROUTING_KEY = "STORY_ROUTING_KEY";
+    public static final String STOCK_ROUTING_KEY = "STOCK_ROUTING_KEY";
 
     //订单路由键
     public static final String ORDER_ROUTING_KEY = "ORDER_ROUTING_KEY";
@@ -40,20 +40,20 @@ public class MyRabbitMQConfig {
 
     //创建库存交换机
     @Bean
-    public Exchange getStoryExchange() {
-        return ExchangeBuilder.directExchange(STORY_EXCHANGE).durable(true).build();
+    public Exchange getStockExchange() {
+        return ExchangeBuilder.directExchange(STOCK_EXCHANGE).durable(true).build();
     }
 
     //创建库存队列
     @Bean
-    public Queue getStoryQueue() {
-        return new Queue(STORY_QUEUE);
+    public Queue getStockQueue() {
+        return new Queue(STOCK_QUEUE);
     }
 
     //库存交换机和库存队列绑定
     @Bean
-    public Binding bindStory() {
-        return BindingBuilder.bind(getStoryQueue()).to(getStoryExchange()).with(STORY_ROUTING_KEY).noargs();
+    public Binding bindStock() {
+        return BindingBuilder.bind(getStockQueue()).to(getStockExchange()).with(STOCK_ROUTING_KEY).noargs();
     }
 
     //创建订单队列

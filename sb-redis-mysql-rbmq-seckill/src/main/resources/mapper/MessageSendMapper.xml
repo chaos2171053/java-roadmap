@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.sbredismysqlrbmqseckill.mapper.MessageSendMapper">
+
+    <insert id="insertMessageSend" parameterType="com.example.sbredismysqlrbmqseckill.bean.MessageSend" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO message_send (status,username,stock_name)
+        VALUES (#{status}, #{username},#{stockName})
+    </insert>
+
+    <update id="updateMessageSendStatus" parameterType="com.example.sbredismysqlrbmqseckill.bean.MessageSend">
+        UPDATE message_send
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <select id="getAllMessageSends" resultType="com.example.sbredismysqlrbmqseckill.bean.MessageSend">
+        SELECT * FROM message_send
+    </select>
+
+</mapper>

@@ -1,12 +1,10 @@
 package com.example.sbredismysqlrbmqseckill.controller;
 
+import com.example.sbredismysqlrbmqseckill.bean.MessageSend;
 import com.example.sbredismysqlrbmqseckill.bean.Order;
 import com.example.sbredismysqlrbmqseckill.bean.Stock;
 import com.example.sbredismysqlrbmqseckill.config.MyRabbitMQConfig;
-import com.example.sbredismysqlrbmqseckill.service.OrderService;
-import com.example.sbredismysqlrbmqseckill.service.RedisDistributedLock;
-import com.example.sbredismysqlrbmqseckill.service.RedisService;
-import com.example.sbredismysqlrbmqseckill.service.StockService;
+import com.example.sbredismysqlrbmqseckill.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -45,6 +43,8 @@ public class SecController {
     @Autowired
     private RabbitTemplate rabbitTemplate;
     private final String SEC_REDIS_LUA_SCRIPT_PATH = "scripts/sec_redis.lua";
+    @Autowired
+    MessageSendService messageSendService;
 
 
     /**
@@ -475,7 +475,7 @@ public class SecController {
                 Integer stockCount = stockService.selectByName(stockName);
                 if (stockCount > 0) {
                     // 发消息给库存消息队列，将库存数据减一
-                    rabbitTemplate.convertAndSend(MyRabbitMQConfig.STORY_EXCHANGE, MyRabbitMQConfig.STORY_ROUTING_KEY, stockName);
+                    rabbitTemplate.convertAndSend(MyRabbitMQConfig.STOCK_EXCHANGE, MyRabbitMQConfig.STOCK_ROUTING_KEY, stockName);
                     Order order = new Order();
                     order.setOrderName(stockName);
                     order.setOrderUser(username);
@@ -551,6 +551,55 @@ public class SecController {
             message = "秒杀失败，请稍后重试";
         }
 
+        return message;
+    }
+
+    /**
+     * 使用 redission + rabbitmq + 消息发送表
+     *
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secRedissonMQMessageTable")
+    public String secRedissonMQMessageTable(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
+        String message = "";
+        RLock lock = redissonClient.getLock("stock_" + stockName);
+        try {
+            // 尝试加锁，等待时间为100秒，锁的过期时间为10秒
+            if (lock.tryLock(100, 10, TimeUnit.SECONDS)) {
+                Integer stockCount = stockService.selectByName(stockName);
+                if (stockCount > 0) {
+
+                    MessageSend messageSend = new MessageSend();
+                    messageSend.setUsername(username);
+                    messageSend.setStockName(stockName);
+                    messageSend.setStatus("待处理");
+                    messageSendService.insertMessageSend(messageSend);
+
+                    // 发消息给库存消息队列，将库存数据减一
+                    rabbitTemplate.convertAndSend(MyRabbitMQConfig.STOCK_EXCHANGE, MyRabbitMQConfig.STOCK_ROUTING_KEY, messageSend);
+                    Order order = new Order();
+                    order.setOrderName(stockName);
+                    order.setOrderUser(username);
+                    //发消息给订单消息队列，创建订单
+                    // 生成订单也应该更新消息表，这里就不做处理了
+                    rabbitTemplate.convertAndSend(MyRabbitMQConfig.ORDER_EXCHANGE, MyRabbitMQConfig.ORDER_ROUTING_KEY, order);
+                    message = username + "参加秒杀结果是：成功";
+                } else {
+                    message = username + "参加秒杀活动结果是：秒杀已经结束";
+                }
+            } else {
+                message = "获取锁超时";
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            message = "秒杀过程中发生异常";
+        } finally {
+            log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{},释放锁", Thread.currentThread().getId(), username, stockName);
+            lock.unlock();
+        }
         return message;
     }
 
