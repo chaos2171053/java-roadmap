@@ -21,6 +21,7 @@ public class MQStockService {
 
     /**
      * 监听库存消息队列，并消费
+     *
      * @param messageSend
      */
     @RabbitListener(queues = MyRabbitMQConfig.STOCK_QUEUE)
@@ -35,11 +36,11 @@ public class MQStockService {
 
         MessageSend updateMessageSend = new MessageSend();
         BeanUtils.copyProperties(messageSend, updateMessageSend);
-        updateMessageSend.setStatus("以扣减库存");
-        log.info("库存消息队列更新消息表 {}",updateMessageSend.toString());
+        updateMessageSend.setStatus("已扣减库存");
+        log.info("库存消息队列更新消息表 {}", updateMessageSend.toString());
         messageSendService.updateMessageSendStatus(updateMessageSend);
 
-        }
-
     }
+
 }
+
