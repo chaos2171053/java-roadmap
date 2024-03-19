@@ -167,7 +167,7 @@ public class SecController {
     public String secRedisLua(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
         synchronized (this) {
             String message = "";
-
+            // 为了方便没有判断用户已经秒杀成功，避免重复秒杀
             DefaultRedisScript<String> redisScript = new DefaultRedisScript<>();
             redisScript.setScriptSource(new ResourceScriptSource(new ClassPathResource(SEC_REDIS_LUA_SCRIPT_PATH)));
             redisScript.setResultType(String.class);
@@ -497,4 +497,61 @@ public class SecController {
         }
         return message;
     }
+
+    /**
+     * 使用redis 分布式自旋锁+lua进行秒杀
+     *
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secRedisDistributedSpinLuaLock")
+    public String secRedisDistributedSpinLuaLock(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
+        String message = "";
+
+        // 定义自旋次数
+        int spinCount = 10;
+        while (spinCount-- > 0) {
+            boolean lockAcquired = redisDistributedLock.acquireLock(stockName, String.valueOf(Thread.currentThread().getId()), 15);
+            try {
+                if (lockAcquired) {
+                    Integer stockCount = stockService.selectByName(stockName);
+                    if (stockCount > 0) {
+                        // 还有库存
+                        // 1. 库存减一
+                        stockService.decrByStock(stockName);
+                        // 2. 生成订单
+                        Order order = new Order();
+                        order.setOrderName(stockName);
+                        order.setOrderUser(username);
+                        orderService.createOrder(order);
+                        log.info("用户：{}.参加秒杀结果是：成功", username);
+                        message = username + "参加秒杀结果是：成功";
+                    } else {
+                        log.info("用户：{}.参加秒杀结果是：秒杀已经结束", username);
+                        message = username + "参加秒杀活动结果是：秒杀已经结束";
+                    }
+                    break; // 跳出自旋循环
+                }
+            } finally {
+                redisDistributedLock.releaseLockByLua(stockName, String.valueOf(Thread.currentThread().getId()));
+            }
+            // 自旋等待一段时间后再重试
+            try {
+                Thread.sleep(100); // 休眠100毫秒
+            } catch (InterruptedException e) {
+                // 忽略中断异常
+            }
+        }
+
+        if (spinCount <= 0) {
+            // 自旋次数耗尽，未能获取到锁
+            log.info("自旋次数耗尽，未能获取到锁");
+            message = "秒杀失败，请稍后重试";
+        }
+
+        return message;
+    }
+
 }

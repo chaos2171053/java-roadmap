@@ -5,7 +5,7 @@
 <mapper namespace="com.example.sbredismysqlrbmqseckill.mapper.OrderMapper">
 
     <insert id="insert" parameterType="com.example.sbredismysqlrbmqseckill.bean.Order">
-        insert into seckill.t_order(order_name, order_user) value (#{orderName}, #{orderUser})
+        insert into seckill.order(order_name, order_user) value (#{orderName}, #{orderUser})
     </insert>
 
 </mapper>
