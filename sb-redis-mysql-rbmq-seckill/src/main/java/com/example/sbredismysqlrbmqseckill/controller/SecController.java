@@ -603,4 +603,51 @@ public class SecController {
         return message;
     }
 
+    /**
+     * 使用 redission + rabbitmq delay message + 消息发送表
+     *
+     * @param username
+     * @param stockName
+     * @return
+     */
+    @GetMapping("/secRedissonMQDelayMessageTable")
+    public String secRedissonMQDelayMessageTable(@RequestParam(value = "username") Integer username, @RequestParam(value = "stockName") String stockName) {
+        log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{}", Thread.currentThread().getId(), username, stockName);
+        String message = "";
+        RLock lock = redissonClient.getLock("stock_" + stockName);
+        try {
+            // 尝试加锁，等待时间为100秒，锁的过期时间为10秒
+            if (lock.tryLock(100, 10, TimeUnit.SECONDS)) {
+                Integer stockCount = stockService.selectByName(stockName);
+                if (stockCount > 0) {
+
+                    MessageSend messageSend = new MessageSend();
+                    messageSend.setUsername(username);
+                    messageSend.setStockName(stockName);
+                    messageSend.setStatus("待处理");
+                    messageSendService.insertMessageSend(messageSend);
+
+                    // 发消息给库存消息队列，将库存数据减一
+                    rabbitTemplate.convertAndSend(MyRabbitMQConfig.STOCK_EXCHANGE, MyRabbitMQConfig.STOCK_ROUTING_KEY, messageSend);
+                    Order order = new Order();
+                    order.setOrderName(stockName);
+                    order.setOrderUser(username);
+                    orderService.sendOrderDelayed(order);
+                    message = username + "参加秒杀结果是：成功";
+                } else {
+                    message = username + "参加秒杀活动结果是：秒杀已经结束";
+                }
+            } else {
+                message = "获取锁超时";
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            message = "秒杀过程中发生异常";
+        } finally {
+            log.info("线程：{}, 参加秒杀的用户是：{}，秒杀的商品是：{},释放锁", Thread.currentThread().getId(), username, stockName);
+            lock.unlock();
+        }
+        return message;
+    }
+
 }

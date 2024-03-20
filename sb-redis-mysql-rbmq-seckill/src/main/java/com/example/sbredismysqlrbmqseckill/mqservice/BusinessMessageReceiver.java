@@ -8,17 +8,18 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-import static com.example.sbredismysqlrbmqseckill.config.RabbitMQConfig.BUSINESS_QUEUE_A_NAME;
-import static com.example.sbredismysqlrbmqseckill.config.RabbitMQConfig.BUSINESS_QUEUE_B_NAME;
+import static com.example.sbredismysqlrbmqseckill.config.RabbitMQTutorialConfig.BUSINESS_QUEUEA_NAME;
+import static com.example.sbredismysqlrbmqseckill.config.RabbitMQTutorialConfig.BUSINESS_QUEUEB_NAME;
+
 
 @Slf4j
 @Component
 public class BusinessMessageReceiver {
 
-    @RabbitListener(queues = BUSINESS_QUEUE_A_NAME)
+    @RabbitListener(queues = BUSINESS_QUEUEA_NAME)
     public void receiveA(Message message, Channel channel) throws IOException {
         String msg = new String(message.getBody());
-        log.info("收到业务消息A：{}", msg);
+        log.info("receiveA 收到业务消息A：{}", msg);
         boolean ack = true;
         Exception exception = null;
         try {
@@ -30,7 +31,6 @@ public class BusinessMessageReceiver {
             exception = e;
         }
         if (!ack){
-            log.info("死信消息properties：{}", message.getMessageProperties());
             log.error("消息消费发生异常，error msg:{}", exception.getMessage(), exception);
             channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
         } else {
@@ -38,9 +38,9 @@ public class BusinessMessageReceiver {
         }
     }
 
-    @RabbitListener(queues = BUSINESS_QUEUE_B_NAME)
+    @RabbitListener(queues = BUSINESS_QUEUEB_NAME)
     public void receiveB(Message message, Channel channel) throws IOException {
-        System.out.println("收到业务消息B：" + new String(message.getBody()));
+        System.out.println("receiveB 收到业务消息B：" + new String(message.getBody()));
         channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
     }
 }
