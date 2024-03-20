@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.Date;
 
 import static com.example.sbredismysqlrbmqseckill.config.OrderMQConfig.DEAD_LETTER_QUEUE_NAME;
+import static com.example.sbredismysqlrbmqseckill.config.OrderMQConfig.DELAYED_QUEUE_NAME;
 
 @Service
 @Slf4j
